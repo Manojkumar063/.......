@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 400px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .chat-box {
+            height: 300px;
+            padding: 10px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .input-container {
+            display: flex;
+            padding: 10px;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .message {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .user-message {
+            background: #d1e7dd;
+            text-align: right;
+        }
+
+        .assistant-message {
+            background: #f8d7da;
+            text-align: left;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            text-align: left;
+            border: 1px solid #721c24;
+        }
+
+        /* Loading spinner */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div id="chat-box" class="chat-box"></div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    <script>
+        // Load message history from localStorage when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMessageHistory();
+        });
+
+        // Function to send a message
+        function sendMessage() {
+            const userInput = document.getElementById('user-input');
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Disable input and button while processing
+            userInput.disabled = true;
+            document.querySelector('button').disabled = true;
+
+            // Display user message
+            appendMessage('user-message', message);
+            saveMessage('user', message); // Save to history
+            userInput.value = '';
+
+            // Show loading spinner
+            showLoadingSpinner();
+
+            // Send to backend
+            fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Remove loading spinner
+                removeLoadingSpinner();
+                // Display assistant response
+                appendMessage('assistant-message', data.response);
+                saveMessage('assistant', data.response); // Save to history
+            })
+            .catch(error => {
+                // Remove loading spinner
+                removeLoadingSpinner();
+                // Display error message
+                appendMessage('error-message', 'Error: Could not get response from server. Please try again.');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                // Re-enable input and button
+                userInput.disabled = false;
+                document.querySelector('button').disabled = false;
+                userInput.focus();
+            });
+        }
+
+        // Function to append a message to the chat box
+        function appendMessage(className, text) {
+            const chatBox = document.getElementById('chat-box');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${className}`;
+            messageDiv.textContent = text;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Function to show loading spinner
+        function showLoadingSpinner() {
+            const chatBox = document.getElementById('chat-box');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-spinner';
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<div class="spinner"></div>';
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Function to remove loading spinner
+        function removeLoadingSpinner() {
+            const loadingSpinner = document.getElementById('loading-spinner');
+            if (loadingSpinner) {
+                loadingSpinner.remove();
+            }
+        }
+
+        // Function to save message to localStorage
+        function saveMessage(sender, text) {
+            let history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            history.push({ sender, text, timestamp: new Date().toISOString() });
+            localStorage.setItem('chatHistory', JSON.stringify(history));
+        }
+
+        // Function to load message history from localStorage
+        function loadMessageHistory() {
+            const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            history.forEach(msg => {
+                const className = msg.sender === 'user' ? 'user-message' : 'assistant-message';
+                appendMessage(className, msg.text);
+            });
+        }
+
+        // Allow Enter key to send message
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
