@@ -13,7 +13,7 @@ Backend: Flask server handling API requests for chat interactions.
 Extensibility: Supports adding image processing or more advanced features.
 
 Prerequisites
-Python 3.8+ installed.
+Python 3.8+ install
 
 An OpenAI API key (sign up at OpenAI's website and set it as an environment variable: export OPENAI_API_KEY='your-key-here').
 
